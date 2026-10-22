@@ -361,7 +361,10 @@ It becomes a Java `switch`. The subject of `is` branches is narrowed in each bra
 names a subject that is not already a name). A branch is an expression or, after `->`, a block whose last
 expression is the value; in a `when` statement a branch may also be a single statement without braces: `break`,
 `continue`, `return` or `return value`, or an assignment (`2 -> continue`, `else -> n += x`); a `when` that gives a
-value cannot be left with any of them. Branches with `is` must cover a sealed interface or end with `else`; a
+value cannot be left with any of them. Branches with `is` must cover a sealed interface or end with `else`. A sealed
+interface may extend another sealed interface: the `when` may test its final implementations individually, or test
+an intermediate sealed interface to cover all of its implementations. An open interface below a sealed one remains
+a case of its own. A
 `when` over constants that gives a value needs an `else`, unless it names every constant of an enum. The
 sealed types and enums may be declared in the build or come from the classpath.
 Constants are literals, negative numbers or names of constants such as `Color.RED`; a `Long`, `Double` or

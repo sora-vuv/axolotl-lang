@@ -35,8 +35,8 @@ fn typesProblem(w: Expr.When, file: SourceFile, siblings: List<SourceFile>) -> S
     for (decl in declsOf(file, siblings)) {
         if (decl is Decl.Interface) {
             val implementations = implementationsOf(decl.name(), file, siblings)
-            if (!tested.isEmpty() && implementations.containsAll(tested)) {
-                return problemWith(decl, implementations, tested)
+            if (!tested.isEmpty() && implementations.containsAll(expandedTests(tested, file, siblings))) {
+                return problemWith(decl, implementations, expandedTests(tested, file, siblings))
             }
         }
     }
@@ -129,7 +129,37 @@ private fn problemWith(i: Decl.Interface, implementations: List<String>, tested:
 }
 
 private fn implementationsOf(name: String, file: SourceFile, siblings: List<SourceFile>) -> List<String> =
-    declsOf(file, siblings) |> filter { d -> extendsType(d, name) } |> map { d -> nameOf(d) }
+    implementationsBelow(name, declsOf(file, siblings))
+
+/** The final implementations of a sealed interface; an open interface remains a case of its own. */
+private fn implementationsBelow(name: String, decls: List<Decl>) -> List<String> {
+    val result = ArrayList<String>()
+    for (decl in decls) {
+        if (extendsType(decl, name)) {
+            if (decl is Decl.Interface && decl.isSealed()) {
+                result.addAll(implementationsBelow(decl.name(), decls))
+            } else {
+                result.add(nameOf(decl))
+            }
+        }
+    }
+    return result
+}
+
+/** Expand a tested sealed interface to the cases it covers, so testing a parent covers its descendants. */
+private fn expandedTests(tested: Set<String>, file: SourceFile, siblings: List<SourceFile>) -> Set<String> {
+    val result = HashSet<String>()
+    val decls = declsOf(file, siblings)
+    for (name in tested) {
+        val decl = decls |> filter { d -> nameOf(d).equals(name) } |> first
+        if (decl is Decl.Interface && decl.isSealed()) {
+            result.addAll(implementationsBelow(name, decls))
+        } else {
+            result.add(name)
+        }
+    }
+    return result
+}
 
 /** The declarations of the file and of the other files of its package, which a `when` may name as well. */
 fn declsOf(file: SourceFile, siblings: List<SourceFile>) -> List<Decl> {
